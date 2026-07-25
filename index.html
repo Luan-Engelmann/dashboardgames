@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Jogos oTalDoTroia</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* ==============================
+           VARIÁVEIS DE COR E TEMA
+           ============================== */
+        :root {
+            --bg-body: #0d0d17; 
+            --bg-card: #161625; 
+            --bg-card-hover: #1e1e33; 
+            --text-main: #ffffff;
+            --text-muted: #8b8ba7;
+            --accent-purple: #8257e5; 
+            --accent-pink: #ff007f;   
+            --accent-cyan: #00e5ff;   
+            --accent-green: #00ff88;  
+            --gradient-main: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            --border-color: #2a2a40;
+            --font-family: 'Poppins', 'Segoe UI', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background-color: var(--bg-body); color: var(--text-main); font-family: var(--font-family); padding: 20px; line-height: 1.6; }
+        .container { max-width: 1700px; margin: 0 auto; }
+        h2, h3 { font-weight: 600; letter-spacing: 0.5px; }
+
+        /* CABEÇALHO */
+        .header { text-align: center; padding: 40px 0; background: radial-gradient(circle at center, #251d3a 0%, var(--bg-body) 70%); border-bottom: 1px solid var(--border-color); margin-bottom: 30px; border-radius: 12px; }
+        .logo-container { width: 120px; height: 120px; margin: 0 auto 20px; border-radius: 50%; background: var(--bg-card); border: 4px solid var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 0 20px rgba(130, 87, 229, 0.3); }
+        .logo-container img { width: 100%; height: 100%; object-fit: cover; }
+        .header h1 { font-size: 32px; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; }
+        .status-badge { display: inline-flex; align-items: center; gap: 8px; background-color: rgba(0, 255, 136, 0.1); color: var(--accent-green); padding: 8px 20px; border-radius: 50px; font-size: 14px; border: 1px solid rgba(0, 255, 136, 0.3); margin-bottom: 25px; }
+        .header-actions { display: flex; justify-content: center; gap: 15px; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .btn-add { background-color: var(--accent-purple); }
+
+        /* CARDS DO TOPO */
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background-color: var(--bg-card); padding: 25px; border-radius: 12px; border: 1px solid var(--border-color); position: relative; overflow: hidden; }
+        .stat-card::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px; background: var(--gradient-main); }
+        .stat-card h3 { font-size: 13px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .stat-card p { font-size: 32px; color: var(--text-main); font-weight: bold; font-family: 'Courier New', monospace; }
+        .stat-card p.hours { color: var(--accent-pink); }
+        .stat-card p.total { color: var(--accent-cyan); }
+
+        /* KANBAN BOARD */
+        .board-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: start; }
+        .board-col { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); min-height: 400px; transition: background-color 0.2s; }
+        
+        .board-col.drag-over { background-color: var(--bg-card-hover); border-style: dashed; border-color: var(--accent-cyan); }
+
+        .board-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
+        .board-col-title { font-size: 14px; text-transform: uppercase; font-weight: bold; }
+        .col-1 .board-col-title { color: var(--text-muted); }
+        .col-2 .board-col-title { color: var(--accent-cyan); }
+        .col-3 .board-col-title { color: var(--accent-pink); }
+        .col-4 .board-col-title { color: var(--accent-green); }
+        .col-count { background-color: rgba(255,255,255,0.05); color: var(--text-muted); padding: 2px 10px; border-radius: 50px; font-size: 12px; }
+
+        /* GAME CARD */
+        .game-card { background-color: #ffffff; border-radius: 8px; padding: 20px; margin-bottom: 15px; color: #1a1a1a; transition: 0.2s; cursor: grab; border: 2px solid transparent; }
+        .game-card:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .game-card:active { cursor: grabbing; opacity: 0.8; transform: scale(0.98); }
+        .game-tags { display: flex; gap: 6px; margin-bottom: 12px; }
+        .game-tag { color: white; padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; background-color: var(--accent-purple); }
+        .game-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .game-info { font-size: 13px; color: #555; margin-bottom: 20px; }
+        .game-info div { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .game-info i { width: 18px; text-align: center; color: var(--accent-purple); }
+        .btn-youtube { background-color: #c4302b; color: white; width: 100%; padding: 10px; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none;}
+        .card-actions { display: flex; gap: 8px; border-top: 1px solid #eee; padding-top: 12px; }
+        .btn-action { flex: 1; padding: 7px; border: 1px solid #ddd; background-color: #f9f9f9; border-radius: 6px; font-size: 12px; cursor: pointer; color: #333; }
+        .btn-action:hover { background-color: #eee; }
+        .btn-action.delete { color: #d63031; border-color: rgba(214, 48, 49, 0.2); }
+
+        /* MODAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--bg-card); padding: 30px; border-radius: 12px; border: 1px solid var(--border-color); width: 100%; max-width: 500px; box-shadow: 0 0 30px rgba(130, 87, 229, 0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { color: var(--accent-cyan); }
+        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+        
+        /* FORMULÁRIO */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 13px; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-body); color: white; font-family: inherit; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent-purple); }
+        .btn-submit { width: 100%; background: var(--gradient-main); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 16px; }
+
+        /* LOADER */
+        .loader { display: none; margin: 20px auto; border: 4px solid var(--border-color); border-top: 4px solid var(--accent-cyan); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- CABECALHO -->
+    <div class="header">
+        <div class="logo-container">
+            <img src="LOGO OTALDOTROIA.jpeg" alt="Logo oTalDoTroia">
+        </div>
+        <h1>Gerenciador de Jogos oTalDoTroia</h1>
+        <div class="status-badge"><i class="fa-solid fa-circle-check"></i> <span id="headerTotalGames">0</span> jogo(s) na biblioteca</div>
+        
+        <div class="header-actions">
+            <button class="btn btn-add" onclick="openModal()"><i class="fa-solid fa-plus"></i> Novo Jogo</button>
+        </div>
+    </div>
+
+    <!-- RESUMO DE HORAS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3><i class="fa-regular fa-clock"></i> TOTAL DE HORAS</h3>
+            <p class="hours" id="statTotalHours">0h</p>
+        </div>
+        <div class="stat-card">
+            <h3><i class="fa-solid fa-book-open"></i> HORAS DE HISTÓRIA</h3>
+            <p class="hours" id="statStoryHours">0h</p>
+        </div>
+        <div class="stat-card">
+            <h3><i class="fa-solid fa-trophy"></i> HORAS DE PLATINA</h3>
+            <p class="hours" id="statPlatHours">0h</p>
+        </div>
+        <div class="stat-card">
+            <h3><i class="fa-solid fa-gamepad"></i> TOTAL DE JOGOS</h3>
+            <p class="total" id="statTotalGames">0</p>
+        </div>
+    </div>
+
+    <div id="mainLoader" class="loader" style="display: block;"></div>
+
+    <!-- KANBAN BOARD -->
+    <div class="board-grid">
+        <div class="board-col col-1" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 1)">
+            <div class="board-col-header">
+                <div class="board-col-title">A JOGAR</div>
+                <div class="col-count" id="count-col-1">0</div>
+            </div>
+            <div id="col-1-content" class="col-content"></div>
+        </div>
+
+        <div class="board-col col-2" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 2)">
+            <div class="board-col-header">
+                <div class="board-col-title">JOGANDO HISTÓRIA</div>
+                <div class="col-count" id="count-col-2">0</div>
+            </div>
+            <div id="col-2-content" class="col-content"></div>
+        </div>
+
+        <div class="board-col col-3" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 3)">
+            <div class="board-col-header">
+                <div class="board-col-title">PLATINA / PÓS</div>
+                <div class="col-count" id="count-col-3">0</div>
+            </div>
+            <div id="col-3-content" class="col-content"></div>
+        </div>
+
+        <div class="board-col col-4" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 4)">
+            <div class="board-col-header">
+                <div class="board-col-title">FINALIZADOS</div>
+                <div class="col-count" id="count-col-4">0</div>
+            </div>
+            <div id="col-4-content" class="col-content"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PARA ADICIONAR E EDITAR -->
+<div class="modal-overlay" id="addGameModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Adicionar Novo Jogo</h2>
+            <button class="close-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="gameForm" onsubmit="saveGame(event)">
+            <div class="form-group">
+                <label>Nome do Jogo *</label>
+                <input type="text" id="inputName" required placeholder="Ex: God of War">
+            </div>
+            <div class="form-group">
+                <label>Status / Coluna *</label>
+                <select id="inputStatus">
+                    <option value="1">A Jogar</option>
+                    <option value="2">Jogando História</option>
+                    <option value="3">Platina / Pós-game</option>
+                    <option value="4">Finalizado</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Plataforma</label>
+                <input type="text" id="inputPlatform" placeholder="Ex: PlayStation, PC, Xbox">
+            </div>
+            <div class="form-group" style="display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label>Horas de História</label>
+                    <input type="number" id="inputStoryHours" placeholder="0" min="0">
+                </div>
+                <div style="flex: 1;">
+                    <label>Horas de Platina/Extra</label>
+                    <input type="number" id="inputPlatHours" placeholder="0" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Link da Playlist do YouTube (Opcional)</label>
+                <input type="url" id="inputUrl" placeholder="https://youtube.com/...">
+            </div>
+            <button type="submit" id="btnSubmit" class="btn-submit">Salvar Jogo</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ==========================================
+    // CONFIGURAÇÕES DO SUPABASE COM A SUA CHAVE
+    // ==========================================
+    const SUPABASE_URL = "https://odbfnjehaiohmahkyvlk.supabase.co/rest/v1/jogos";
+    const SUPABASE_KEY = "sb_publishable_yrG8wkw56PNlfuFfs7-c4Q_Kp-hjUxQ";
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Prefer': 'return=representation' 
+    };
+
+    let games = [];
+    let editingGameId = null;
+
+    // --- FUNÇÕES DE BANCO DE DADOS (SUPABASE) ---
+
+    // 1. Buscar todos os jogos
+    async function fetchGames() {
+        document.getElementById('mainLoader').style.display = 'block';
+        try {
+            const response = await fetch(`${SUPABASE_URL}?select=*`, { headers });
+            if (!response.ok) throw new Error("Erro ao buscar dados");
+            
+            games = await response.json();
+            renderDashboard();
+        } catch (error) {
+            console.error(error);
+            alert("Erro ao conectar no banco de dados. Verifique sua chave API.");
+        } finally {
+            document.getElementById('mainLoader').style.display = 'none';
+        }
+    }
+
+    // 2. Salvar Jogo (Cria novo ou Atualiza existente)
+    async function saveGame(event) {
+        event.preventDefault(); 
+        const btn = document.getElementById('btnSubmit');
+        btn.innerText = "Salvando...";
+        btn.disabled = true;
+
+        const gameData = {
+            name: document.getElementById('inputName').value,
+            status: document.getElementById('inputStatus').value,
+            platform: document.getElementById('inputPlatform').value || 'Não informada',
+            storyHours: parseFloat(document.getElementById('inputStoryHours').value) || 0,
+            platHours: parseFloat(document.getElementById('inputPlatHours').value) || 0,
+            url: document.getElementById('inputUrl').value
+        };
+
+        try {
+            if (editingGameId !== null) {
+                // Atualizar (PATCH)
+                await fetch(`${SUPABASE_URL}?id=eq.${editingGameId}`, {
+                    method: 'PATCH',
+                    headers,
+                    body: JSON.stringify(gameData)
+                });
+            } else {
+                // Criar Novo (POST) - A base de dados vai gerar o ID
+                await fetch(SUPABASE_URL, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(gameData)
+                });
+            }
+            
+            closeModal();
+            await fetchGames(); // Recarrega a lista oficial da nuvem
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert("Erro ao salvar o jogo.");
+        } finally {
+            btn.innerText = "Salvar Jogo";
+            btn.disabled = false;
+        }
+    }
+
+    // 3. Excluir Jogo (DELETE)
+    async function deleteGame(id) {
+        if(confirm("Tem certeza que deseja excluir este jogo da nuvem?")) {
+            try {
+                // Atualiza visualmente na hora para parecer rápido
+                games = games.filter(game => game.id !== id);
+                renderDashboard(); 
+
+                // Deleta no banco no fundo
+                await fetch(`${SUPABASE_URL}?id=eq.${id}`, {
+                    method: 'DELETE',
+                    headers
+                });
+            } catch (error) {
+                console.error("Erro ao deletar:", error);
+                alert("Ocorreu um erro ao excluir o jogo.");
+                await fetchGames(); // Recarrega se der erro
+            }
+        }
+    }
+
+    // --- FUNÇÕES DO MODAL ---
+    function openModal(id = null) {
+        editingGameId = id;
+        if (id !== null) {
+            document.getElementById('modalTitle').innerText = "Editar Jogo";
+            const game = games.find(g => g.id === id);
+            if (game) {
+                document.getElementById('inputName').value = game.name || '';
+                document.getElementById('inputStatus').value = game.status || '1';
+                document.getElementById('inputPlatform').value = game.platform || '';
+                document.getElementById('inputStoryHours').value = game.storyHours || 0;
+                document.getElementById('inputPlatHours').value = game.platHours || 0;
+                document.getElementById('inputUrl').value = game.url || '';
+            }
+        } else {
+            document.getElementById('modalTitle').innerText = "Adicionar Novo Jogo";
+            document.getElementById('gameForm').reset();
+        }
+        document.getElementById('addGameModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('addGameModal').style.display = 'none';
+        document.getElementById('gameForm').reset();
+        editingGameId = null;
+    }
+
+    // --- FUNÇÕES DE ARRASTAR E SOLTAR (DRAG & DROP) ---
+    function dragStart(event, id) {
+        event.dataTransfer.setData("gameId", id);
+    }
+
+    function allowDrop(event) {
+        event.preventDefault();
+        if (event.currentTarget.classList.contains('board-col')) {
+            event.currentTarget.classList.add('drag-over');
+        }
+    }
+
+    function dragLeave(event) {
+        if (event.currentTarget.classList.contains('board-col')) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+    }
+
+    async function drop(event, newStatus) {
+        event.preventDefault();
+        
+        if (event.currentTarget.classList.contains('board-col')) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        const gameId = parseInt(event.dataTransfer.getData("gameId"));
+        const gameIndex = games.findIndex(g => g.id === gameId);
+        
+        if (gameIndex !== -1) {
+            const oldStatus = games[gameIndex].status;
+            // Só atualiza se mudou de coluna
+            if (oldStatus !== newStatus.toString()) {
+                // Atualiza visualmente instantaneamente
+                games[gameIndex].status = newStatus.toString();
+                renderDashboard();
+                
+                // Manda a atualização em background para o banco
+                try {
+                    await fetch(`${SUPABASE_URL}?id=eq.${gameId}`, {
+                        method: 'PATCH',
+                        headers,
+                        body: JSON.stringify({ status: newStatus.toString() })
+                    });
+                } catch (error) {
+                    console.error("Erro ao mover:", error);
+                    // Em caso de erro, reverte a mudança visual
+                    games[gameIndex].status = oldStatus;
+                    renderDashboard();
+                }
+            }
+        }
+    }
+
+    // --- RENDERIZAR TELA ---
+    function renderDashboard() {
+        document.getElementById('col-1-content').innerHTML = '';
+        document.getElementById('col-2-content').innerHTML = '';
+        document.getElementById('col-3-content').innerHTML = '';
+        document.getElementById('col-4-content').innerHTML = '';
+
+        let totalHorasHistoria = 0;
+        let totalHorasPlatina = 0;
+        let count1 = 0, count2 = 0, count3 = 0, count4 = 0;
+
+        games.forEach(game => {
+            const story = parseFloat(game.storyHours) || 0;
+            const plat = parseFloat(game.platHours) || 0;
+            
+            totalHorasHistoria += story;
+            totalHorasPlatina += plat;
+            const horasTotaisDoJogo = story + plat;
+
+            let ytButtonHTML = game.url 
+                ? `<a href="${game.url}" target="_blank" class="btn-youtube"><i class="fa-brands fa-youtube"></i> Ver Playlist</a>` 
+                : ``;
+
+            const cardHTML = `
+                <div class="game-card" draggable="true" ondragstart="dragStart(event, ${game.id})">
+                    <div class="game-tags">
+                        <span class="game-tag">${game.platform || 'N/A'}</span>
+                    </div>
+                    <div class="game-title">${game.name}</div>
+                    <div class="game-info">
+                        <div><i class="fa-regular fa-clock"></i> <b>Total:</b> ${horasTotaisDoJogo}h</div>
+                        <div><i class="fa-solid fa-book-open"></i> <b>História:</b> ${story}h</div>
+                        <div><i class="fa-solid fa-trophy"></i> <b>Platina:</b> ${plat}h</div>
+                    </div>
+                    ${ytButtonHTML}
+                    <div class="card-actions">
+                        <button class="btn-action" onclick="openModal(${game.id})"><i class="fa-solid fa-pen"></i> Editar</button>
+                        <button class="btn-action delete" onclick="deleteGame(${game.id})"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    </div>
+                </div>
+            `;
+
+            // Verifica o status gravado no banco
+            if(game.status === "1" || game.status === 1) { document.getElementById('col-1-content').innerHTML += cardHTML; count1++; }
+            if(game.status === "2" || game.status === 2) { document.getElementById('col-2-content').innerHTML += cardHTML; count2++; }
+            if(game.status === "3" || game.status === 3) { document.getElementById('col-3-content').innerHTML += cardHTML; count3++; }
+            if(game.status === "4" || game.status === 4) { document.getElementById('col-4-content').innerHTML += cardHTML; count4++; }
+        });
+
+        const totalHoras = totalHorasHistoria + totalHorasPlatina;
+        const totalJogos = games.length;
+
+        document.getElementById('statTotalHours').innerText = totalHoras + "h";
+        document.getElementById('statStoryHours').innerText = totalHorasHistoria + "h";
+        document.getElementById('statPlatHours').innerText = totalHorasPlatina + "h";
+        document.getElementById('statTotalGames').innerText = totalJogos;
+        document.getElementById('headerTotalGames').innerText = totalJogos;
+
+        document.getElementById('count-col-1').innerText = count1;
+        document.getElementById('count-col-2').innerText = count2;
+        document.getElementById('count-col-3').innerText = count3;
+        document.getElementById('count-col-4').innerText = count4;
+    }
+
+    // INICIA A APLICAÇÃO BUSCANDO OS JOGOS NA NUVEM
+    fetchGames();
+
+</script>
+</body>
+</html>
