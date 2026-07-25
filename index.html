@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Jogos oTalDoTroia</title>
+    
+    <!-- FAVICON ADICIONADO AQUI -->
+    <link rel="icon" type="image/jpeg" href="LOGO OTALDOTROIA.jpeg" />
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* ==============================
@@ -118,15 +122,15 @@
     <div class="stats-grid">
         <div class="stat-card">
             <h3><i class="fa-regular fa-clock"></i> TOTAL DE HORAS</h3>
-            <p class="hours" id="statTotalHours">0h</p>
+            <p class="hours" id="statTotalHours">0:00h</p>
         </div>
         <div class="stat-card">
             <h3><i class="fa-solid fa-book-open"></i> HORAS DE HISTÓRIA</h3>
-            <p class="hours" id="statStoryHours">0h</p>
+            <p class="hours" id="statStoryHours">0:00h</p>
         </div>
         <div class="stat-card">
             <h3><i class="fa-solid fa-trophy"></i> HORAS DE PLATINA</h3>
-            <p class="hours" id="statPlatHours">0h</p>
+            <p class="hours" id="statPlatHours">0:00h</p>
         </div>
         <div class="stat-card">
             <h3><i class="fa-solid fa-gamepad"></i> TOTAL DE JOGOS</h3>
@@ -199,12 +203,14 @@
             </div>
             <div class="form-group" style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
-                    <label>Horas de História</label>
-                    <input type="number" id="inputStoryHours" placeholder="0" min="0">
+                    <label>Tempo de História (HH:MM)</label>
+                    <!-- Campo ajustado para texto com máscara -->
+                    <input type="text" id="inputStoryHours" placeholder="00:00" oninput="mascaraTempo(this)">
                 </div>
                 <div style="flex: 1;">
-                    <label>Horas de Platina/Extra</label>
-                    <input type="number" id="inputPlatHours" placeholder="0" min="0">
+                    <label>Tempo de Platina/Extra (HH:MM)</label>
+                    <!-- Campo ajustado para texto com máscara -->
+                    <input type="text" id="inputPlatHours" placeholder="00:00" oninput="mascaraTempo(this)">
                 </div>
             </div>
             <div class="form-group">
@@ -232,6 +238,36 @@
 
     let games = [];
     let editingGameId = null;
+
+    // --- FUNÇÕES DE UTILIDADE PARA TEMPO ---
+    
+    // Aplica a máscara HH:MM no input
+    function mascaraTempo(input) {
+        let valor = input.value.replace(/\D/g, '');
+        if (valor.length > 2) {
+            valor = valor.replace(/(\d{2})$/, ':$1'); 
+        }
+        input.value = valor;
+    }
+
+    // Converte formato "43:10" ou número decimal antigo para minutos totais
+    function parseTempoParaMinutos(tempo) {
+        if (!tempo) return 0;
+        const str = String(tempo);
+        if (str.includes(':')) {
+            const partes = str.split(':');
+            return (parseInt(partes[0]) || 0) * 60 + (parseInt(partes[1]) || 0);
+        }
+        return Math.round((parseFloat(str) || 0) * 60);
+    }
+
+    // Converte minutos totais de volta para "HH:MM"
+    function formataMinutosParaTempo(totalMinutos) {
+        if (totalMinutos === 0) return "0:00";
+        const horas = Math.floor(totalMinutos / 60);
+        const minutos = Math.round(totalMinutos % 60);
+        return `${horas}:${minutos.toString().padStart(2, '0')}`;
+    }
 
     // --- FUNÇÕES DE BANCO DE DADOS (SUPABASE) ---
 
@@ -263,8 +299,9 @@
             name: document.getElementById('inputName').value,
             status: document.getElementById('inputStatus').value,
             platform: document.getElementById('inputPlatform').value || 'Não informada',
-            storyHours: parseFloat(document.getElementById('inputStoryHours').value) || 0,
-            platHours: parseFloat(document.getElementById('inputPlatHours').value) || 0,
+            // Agora salvamos como texto exatamente o que o usuário digitou
+            storyHours: document.getElementById('inputStoryHours').value || "0:00",
+            platHours: document.getElementById('inputPlatHours').value || "0:00",
             url: document.getElementById('inputUrl').value
         };
 
@@ -277,7 +314,7 @@
                     body: JSON.stringify(gameData)
                 });
             } else {
-                // Criar Novo (POST) - A base de dados vai gerar o ID
+                // Criar Novo (POST)
                 await fetch(SUPABASE_URL, {
                     method: 'POST',
                     headers,
@@ -286,10 +323,10 @@
             }
             
             closeModal();
-            await fetchGames(); // Recarrega a lista oficial da nuvem
+            await fetchGames();
         } catch (error) {
             console.error("Erro ao salvar:", error);
-            alert("Erro ao salvar o jogo.");
+            alert("Erro ao salvar o jogo. Verifique se o formato das colunas no Supabase é do tipo TEXT.");
         } finally {
             btn.innerText = "Salvar Jogo";
             btn.disabled = false;
@@ -300,11 +337,9 @@
     async function deleteGame(id) {
         if(confirm("Tem certeza que deseja excluir este jogo da nuvem?")) {
             try {
-                // Atualiza visualmente na hora para parecer rápido
                 games = games.filter(game => game.id !== id);
                 renderDashboard(); 
 
-                // Deleta no banco no fundo
                 await fetch(`${SUPABASE_URL}?id=eq.${id}`, {
                     method: 'DELETE',
                     headers
@@ -312,7 +347,7 @@
             } catch (error) {
                 console.error("Erro ao deletar:", error);
                 alert("Ocorreu um erro ao excluir o jogo.");
-                await fetchGames(); // Recarrega se der erro
+                await fetchGames();
             }
         }
     }
@@ -327,8 +362,8 @@
                 document.getElementById('inputName').value = game.name || '';
                 document.getElementById('inputStatus').value = game.status || '1';
                 document.getElementById('inputPlatform').value = game.platform || '';
-                document.getElementById('inputStoryHours').value = game.storyHours || 0;
-                document.getElementById('inputPlatHours').value = game.platHours || 0;
+                document.getElementById('inputStoryHours').value = game.storyHours || '0:00';
+                document.getElementById('inputPlatHours').value = game.platHours || '0:00';
                 document.getElementById('inputUrl').value = game.url || '';
             }
         } else {
@@ -374,13 +409,10 @@
         
         if (gameIndex !== -1) {
             const oldStatus = games[gameIndex].status;
-            // Só atualiza se mudou de coluna
             if (oldStatus !== newStatus.toString()) {
-                // Atualiza visualmente instantaneamente
                 games[gameIndex].status = newStatus.toString();
                 renderDashboard();
                 
-                // Manda a atualização em background para o banco
                 try {
                     await fetch(`${SUPABASE_URL}?id=eq.${gameId}`, {
                         method: 'PATCH',
@@ -389,7 +421,6 @@
                     });
                 } catch (error) {
                     console.error("Erro ao mover:", error);
-                    // Em caso de erro, reverte a mudança visual
                     games[gameIndex].status = oldStatus;
                     renderDashboard();
                 }
@@ -404,17 +435,22 @@
         document.getElementById('col-3-content').innerHTML = '';
         document.getElementById('col-4-content').innerHTML = '';
 
-        let totalHorasHistoria = 0;
-        let totalHorasPlatina = 0;
+        let totalMinutosHistoria = 0;
+        let totalMinutosPlatina = 0;
         let count1 = 0, count2 = 0, count3 = 0, count4 = 0;
 
         games.forEach(game => {
-            const story = parseFloat(game.storyHours) || 0;
-            const plat = parseFloat(game.platHours) || 0;
+            // Usa as novas funções para transformar o formato HH:MM em minutos para cálculo matemático
+            const storyMins = parseTempoParaMinutos(game.storyHours);
+            const platMins = parseTempoParaMinutos(game.platHours);
             
-            totalHorasHistoria += story;
-            totalHorasPlatina += plat;
-            const horasTotaisDoJogo = story + plat;
+            totalMinutosHistoria += storyMins;
+            totalMinutosPlatina += platMins;
+            
+            // Retorna o tempo formatado para mostrar na tela
+            const horasTotaisDoJogo = formataMinutosParaTempo(storyMins + platMins);
+            const storyText = formataMinutosParaTempo(storyMins);
+            const platText = formataMinutosParaTempo(platMins);
 
             let ytButtonHTML = game.url 
                 ? `<a href="${game.url}" target="_blank" class="btn-youtube"><i class="fa-brands fa-youtube"></i> Ver Playlist</a>` 
@@ -428,8 +464,8 @@
                     <div class="game-title">${game.name}</div>
                     <div class="game-info">
                         <div><i class="fa-regular fa-clock"></i> <b>Total:</b> ${horasTotaisDoJogo}h</div>
-                        <div><i class="fa-solid fa-book-open"></i> <b>História:</b> ${story}h</div>
-                        <div><i class="fa-solid fa-trophy"></i> <b>Platina:</b> ${plat}h</div>
+                        <div><i class="fa-solid fa-book-open"></i> <b>História:</b> ${storyText}h</div>
+                        <div><i class="fa-solid fa-trophy"></i> <b>Platina:</b> ${platText}h</div>
                     </div>
                     ${ytButtonHTML}
                     <div class="card-actions">
@@ -439,19 +475,19 @@
                 </div>
             `;
 
-            // Verifica o status gravado no banco
             if(game.status === "1" || game.status === 1) { document.getElementById('col-1-content').innerHTML += cardHTML; count1++; }
             if(game.status === "2" || game.status === 2) { document.getElementById('col-2-content').innerHTML += cardHTML; count2++; }
             if(game.status === "3" || game.status === 3) { document.getElementById('col-3-content').innerHTML += cardHTML; count3++; }
             if(game.status === "4" || game.status === 4) { document.getElementById('col-4-content').innerHTML += cardHTML; count4++; }
         });
 
-        const totalHoras = totalHorasHistoria + totalHorasPlatina;
         const totalJogos = games.length;
 
-        document.getElementById('statTotalHours').innerText = totalHoras + "h";
-        document.getElementById('statStoryHours').innerText = totalHorasHistoria + "h";
-        document.getElementById('statPlatHours').innerText = totalHorasPlatina + "h";
+        // Atualiza os paineis do topo formatando o total de minutos de volta para HH:MM
+        document.getElementById('statTotalHours').innerText = formataMinutosParaTempo(totalMinutosHistoria + totalMinutosPlatina) + "h";
+        document.getElementById('statStoryHours').innerText = formataMinutosParaTempo(totalMinutosHistoria) + "h";
+        document.getElementById('statPlatHours').innerText = formataMinutosParaTempo(totalMinutosPlatina) + "h";
+        
         document.getElementById('statTotalGames').innerText = totalJogos;
         document.getElementById('headerTotalGames').innerText = totalJogos;
 
