@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Jogos oTalDoTroia</title>
     
-    <!-- FAVICON ADICIONADO AQUI -->
     <link rel="icon" type="image/jpeg" href="LOGO OTALDOTROIA.jpeg" />
-    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         /* ==============================
@@ -55,8 +53,8 @@
 
         /* KANBAN BOARD */
         .board-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; align-items: start; }
-        .board-col { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); min-height: 400px; transition: background-color 0.2s; }
-        
+        .board-col { background-color: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); min-height: 400px; transition: background-color 0.2s; display: flex; flex-direction: column; }
+        .col-content { flex: 1; min-height: 50px; }
         .board-col.drag-over { background-color: var(--bg-card-hover); border-style: dashed; border-color: var(--accent-cyan); }
 
         .board-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--border-color); }
@@ -68,9 +66,10 @@
         .col-count { background-color: rgba(255,255,255,0.05); color: var(--text-muted); padding: 2px 10px; border-radius: 50px; font-size: 12px; }
 
         /* GAME CARD */
-        .game-card { background-color: #ffffff; border-radius: 8px; padding: 20px; margin-bottom: 15px; color: #1a1a1a; transition: 0.2s; cursor: grab; border: 2px solid transparent; }
+        .game-card { background-color: #ffffff; border-radius: 8px; padding: 20px; margin-bottom: 15px; color: #1a1a1a; transition: transform 0.2s, box-shadow 0.2s; border: 2px solid transparent; }
         .game-card:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .game-card:active { cursor: grabbing; opacity: 0.8; transform: scale(0.98); }
+        .game-card.dragging { opacity: 0.4; transform: scale(0.95); box-shadow: none; border: 2px dashed var(--accent-purple); }
+        
         .game-tags { display: flex; gap: 6px; margin-bottom: 12px; }
         .game-tag { color: white; padding: 4px 10px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; background-color: var(--accent-purple); }
         .game-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
@@ -114,7 +113,9 @@
         <div class="status-badge"><i class="fa-solid fa-circle-check"></i> <span id="headerTotalGames">0</span> jogo(s) na biblioteca</div>
         
         <div class="header-actions">
-            <button class="btn btn-add" onclick="openModal()"><i class="fa-solid fa-plus"></i> Novo Jogo</button>
+            <button class="btn" id="btnLogin" onclick="openLoginModal()" style="background-color: var(--border-color);"><i class="fa-solid fa-lock"></i> Acesso Restrito</button>
+            <button class="btn btn-add" id="btnNovoJogo" onclick="openModal()" style="display: none;"><i class="fa-solid fa-plus"></i> Novo Jogo</button>
+            <button class="btn" id="btnLogout" onclick="logoutAdmin()" style="display: none; background-color: #c4302b;"><i class="fa-solid fa-right-from-bracket"></i> Sair</button>
         </div>
     </div>
 
@@ -142,7 +143,7 @@
 
     <!-- KANBAN BOARD -->
     <div class="board-grid">
-        <div class="board-col col-1" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 1)">
+        <div class="board-col col-1" ondragover="allowDrop(event)" ondrop="drop(event, 1)">
             <div class="board-col-header">
                 <div class="board-col-title">A JOGAR</div>
                 <div class="col-count" id="count-col-1">0</div>
@@ -150,7 +151,7 @@
             <div id="col-1-content" class="col-content"></div>
         </div>
 
-        <div class="board-col col-2" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 2)">
+        <div class="board-col col-2" ondragover="allowDrop(event)" ondrop="drop(event, 2)">
             <div class="board-col-header">
                 <div class="board-col-title">JOGANDO HISTÓRIA</div>
                 <div class="col-count" id="count-col-2">0</div>
@@ -158,7 +159,7 @@
             <div id="col-2-content" class="col-content"></div>
         </div>
 
-        <div class="board-col col-3" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 3)">
+        <div class="board-col col-3" ondragover="allowDrop(event)" ondrop="drop(event, 3)">
             <div class="board-col-header">
                 <div class="board-col-title">PLATINA / PÓS</div>
                 <div class="col-count" id="count-col-3">0</div>
@@ -166,7 +167,7 @@
             <div id="col-3-content" class="col-content"></div>
         </div>
 
-        <div class="board-col col-4" ondragover="allowDrop(event)" ondragleave="dragLeave(event)" ondrop="drop(event, 4)">
+        <div class="board-col col-4" ondragover="allowDrop(event)" ondrop="drop(event, 4)">
             <div class="board-col-header">
                 <div class="board-col-title">FINALIZADOS</div>
                 <div class="col-count" id="count-col-4">0</div>
@@ -176,7 +177,26 @@
     </div>
 </div>
 
-<!-- MODAL PARA ADICIONAR E EDITAR -->
+<!-- MODAL DE LOGIN -->
+<div class="modal-overlay" id="loginModal">
+    <div class="modal-content" style="max-width: 350px;">
+        <div class="modal-header">
+            <h2 style="color: var(--accent-pink);">Acesso Restrito</h2>
+            <button class="close-btn" onclick="closeLoginModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="form-group">
+            <label>E-mail</label>
+            <input type="email" id="inputEmail" placeholder="Digite o e-mail autorizado">
+        </div>
+        <div class="form-group">
+            <label>Senha</label>
+            <input type="password" id="inputSenha" placeholder="Digite a senha">
+        </div>
+        <button onclick="fazerLogin()" id="btnEntrar" class="btn-submit" style="background: var(--accent-pink);">Entrar</button>
+    </div>
+</div>
+
+<!-- MODAL DE JOGO -->
 <div class="modal-overlay" id="addGameModal">
     <div class="modal-content">
         <div class="modal-header">
@@ -204,12 +224,10 @@
             <div class="form-group" style="display: flex; gap: 15px;">
                 <div style="flex: 1;">
                     <label>Tempo de História (HH:MM)</label>
-                    <!-- Campo ajustado para texto com máscara -->
                     <input type="text" id="inputStoryHours" placeholder="00:00" oninput="mascaraTempo(this)">
                 </div>
                 <div style="flex: 1;">
                     <label>Tempo de Platina/Extra (HH:MM)</label>
-                    <!-- Campo ajustado para texto com máscara -->
                     <input type="text" id="inputPlatHours" placeholder="00:00" oninput="mascaraTempo(this)">
                 </div>
             </div>
@@ -224,33 +242,109 @@
 
 <script>
     // ==========================================
-    // CONFIGURAÇÕES DO SUPABASE COM A SUA CHAVE
+    // CONFIGURAÇÕES DO SUPABASE
     // ==========================================
-    const SUPABASE_URL = "https://odbfnjehaiohmahkyvlk.supabase.co/rest/v1/jogos";
+    const SUPABASE_PROJECT_URL = "https://odbfnjehaiohmahkyvlk.supabase.co";
+    const SUPABASE_URL = `${SUPABASE_PROJECT_URL}/rest/v1/jogos`;
+    const SUPABASE_AUTH_URL = `${SUPABASE_PROJECT_URL}/auth/v1/token?grant_type=password`;
     const SUPABASE_KEY = "sb_publishable_yrG8wkw56PNlfuFfs7-c4Q_Kp-hjUxQ";
-
-    const headers = {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Prefer': 'return=representation' 
-    };
 
     let games = [];
     let editingGameId = null;
 
-    // --- FUNÇÕES DE UTILIDADE PARA TEMPO ---
-    
-    // Aplica a máscara HH:MM no input
+    // ==========================================
+    // SISTEMA DE LOGIN INTEGRADO AO SUPABASE
+    // ==========================================
+    let isAdmin = localStorage.getItem('adminLogado') === 'true';
+    let adminToken = localStorage.getItem('adminToken') || null;
+
+    function getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${adminToken ? adminToken : SUPABASE_KEY}`,
+            'Prefer': 'return=representation' 
+        };
+    }
+
+    function checkAdminStatus() {
+        if (isAdmin) {
+            document.getElementById('btnNovoJogo').style.display = 'flex';
+            document.getElementById('btnLogout').style.display = 'flex';
+            document.getElementById('btnLogin').style.display = 'none';
+        } else {
+            document.getElementById('btnNovoJogo').style.display = 'none';
+            document.getElementById('btnLogout').style.display = 'none';
+            document.getElementById('btnLogin').style.display = 'flex';
+        }
+    }
+
+    function openLoginModal() {
+        document.getElementById('loginModal').style.display = 'flex';
+        document.getElementById('inputEmail').value = '';
+        document.getElementById('inputSenha').value = '';
+    }
+
+    function closeLoginModal() {
+        document.getElementById('loginModal').style.display = 'none';
+    }
+
+    async function fazerLogin() {
+        const email = document.getElementById('inputEmail').value;
+        const senha = document.getElementById('inputSenha').value;
+        const btn = document.getElementById('btnEntrar');
+
+        if (!email || !senha) return alert("Preencha o e-mail e a senha!");
+
+        btn.innerText = "Autenticando...";
+        btn.disabled = true;
+
+        try {
+            const response = await fetch(SUPABASE_AUTH_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+                body: JSON.stringify({ email: email, password: senha })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error_description || 'Erro no login');
+
+            localStorage.setItem('adminLogado', 'true');
+            localStorage.setItem('adminToken', data.access_token);
+            isAdmin = true;
+            adminToken = data.access_token;
+            
+            closeLoginModal();
+            checkAdminStatus();
+            renderDashboard();
+
+        } catch (error) {
+            alert("Acesso negado: E-mail ou senha incorretos.");
+        } finally {
+            btn.innerText = "Entrar";
+            btn.disabled = false;
+        }
+    }
+
+    function logoutAdmin() {
+        localStorage.removeItem('adminLogado');
+        localStorage.removeItem('adminToken');
+        isAdmin = false;
+        adminToken = null;
+        checkAdminStatus();
+        renderDashboard(); 
+    }
+
+    checkAdminStatus();
+
+    // ==========================================
+    // FUNÇÕES DE UTILIDADE PARA TEMPO
+    // ==========================================
     function mascaraTempo(input) {
         let valor = input.value.replace(/\D/g, '');
-        if (valor.length > 2) {
-            valor = valor.replace(/(\d{2})$/, ':$1'); 
-        }
+        if (valor.length > 2) valor = valor.replace(/(\d{2})$/, ':$1'); 
         input.value = valor;
     }
 
-    // Converte formato "43:10" ou número decimal antigo para minutos totais
     function parseTempoParaMinutos(tempo) {
         if (!tempo) return 0;
         const str = String(tempo);
@@ -261,7 +355,6 @@
         return Math.round((parseFloat(str) || 0) * 60);
     }
 
-    // Converte minutos totais de volta para "HH:MM"
     function formataMinutosParaTempo(totalMinutos) {
         if (totalMinutos === 0) return "0:00";
         const horas = Math.floor(totalMinutos / 60);
@@ -269,26 +362,26 @@
         return `${horas}:${minutos.toString().padStart(2, '0')}`;
     }
 
-    // --- FUNÇÕES DE BANCO DE DADOS (SUPABASE) ---
+    // ==========================================
+    // FUNÇÕES DE BANCO DE DADOS (SUPABASE)
+    // ==========================================
 
-    // 1. Buscar todos os jogos
     async function fetchGames() {
         document.getElementById('mainLoader').style.display = 'block';
         try {
-            const response = await fetch(`${SUPABASE_URL}?select=*`, { headers });
+            // Agora busca os jogos respeitando primeiro a ordem manual, e depois o ID para desempatar
+            const response = await fetch(`${SUPABASE_URL}?select=*&order=ordem.asc,id.asc`, { headers: getHeaders() });
             if (!response.ok) throw new Error("Erro ao buscar dados");
             
             games = await response.json();
             renderDashboard();
         } catch (error) {
             console.error(error);
-            alert("Erro ao conectar no banco de dados. Verifique sua chave API.");
         } finally {
             document.getElementById('mainLoader').style.display = 'none';
         }
     }
 
-    // 2. Salvar Jogo (Cria novo ou Atualiza existente)
     async function saveGame(event) {
         event.preventDefault(); 
         const btn = document.getElementById('btnSubmit');
@@ -299,7 +392,6 @@
             name: document.getElementById('inputName').value,
             status: document.getElementById('inputStatus').value,
             platform: document.getElementById('inputPlatform').value || 'Não informada',
-            // Agora salvamos como texto exatamente o que o usuário digitou
             storyHours: document.getElementById('inputStoryHours').value || "0:00",
             platHours: document.getElementById('inputPlatHours').value || "0:00",
             url: document.getElementById('inputUrl').value
@@ -307,17 +399,18 @@
 
         try {
             if (editingGameId !== null) {
-                // Atualizar (PATCH)
+                // Ao editar, não enviamos a 'ordem' para que ela não seja zerada/alterada
                 await fetch(`${SUPABASE_URL}?id=eq.${editingGameId}`, {
                     method: 'PATCH',
-                    headers,
+                    headers: getHeaders(),
                     body: JSON.stringify(gameData)
                 });
             } else {
-                // Criar Novo (POST)
+                // Novos jogos recebem ordem 999 para irem pro final da coluna
+                gameData.ordem = 999;
                 await fetch(SUPABASE_URL, {
                     method: 'POST',
-                    headers,
+                    headers: getHeaders(),
                     body: JSON.stringify(gameData)
                 });
             }
@@ -326,14 +419,13 @@
             await fetchGames();
         } catch (error) {
             console.error("Erro ao salvar:", error);
-            alert("Erro ao salvar o jogo. Verifique se o formato das colunas no Supabase é do tipo TEXT.");
+            alert("Erro ao salvar. Verifique se a coluna 'ordem' foi criada no Supabase.");
         } finally {
             btn.innerText = "Salvar Jogo";
             btn.disabled = false;
         }
     }
 
-    // 3. Excluir Jogo (DELETE)
     async function deleteGame(id) {
         if(confirm("Tem certeza que deseja excluir este jogo da nuvem?")) {
             try {
@@ -342,17 +434,18 @@
 
                 await fetch(`${SUPABASE_URL}?id=eq.${id}`, {
                     method: 'DELETE',
-                    headers
+                    headers: getHeaders()
                 });
             } catch (error) {
                 console.error("Erro ao deletar:", error);
-                alert("Ocorreu um erro ao excluir o jogo.");
-                await fetchGames();
             }
         }
     }
 
-    // --- FUNÇÕES DO MODAL ---
+    // ==========================================
+    // FUNÇÕES DO MODAL E KANBAN (DRAG & DROP VISUAL)
+    // ==========================================
+
     function openModal(id = null) {
         editingGameId = id;
         if (id !== null) {
@@ -379,56 +472,100 @@
         editingGameId = null;
     }
 
-    // --- FUNÇÕES DE ARRASTAR E SOLTAR (DRAG & DROP) ---
+    // 1. Inicia o Arrastar
     function dragStart(event, id) {
+        if(!isAdmin) return;
         event.dataTransfer.setData("gameId", id);
+        setTimeout(() => event.target.classList.add('dragging'), 0);
     }
 
+    function dragEnd(event) {
+        if(!isAdmin) return;
+        event.target.classList.remove('dragging');
+    }
+
+    // 2. Move os cards dinamicamente enquanto arrasta
     function allowDrop(event) {
-        event.preventDefault();
-        if (event.currentTarget.classList.contains('board-col')) {
-            event.currentTarget.classList.add('drag-over');
-        }
-    }
-
-    function dragLeave(event) {
-        if (event.currentTarget.classList.contains('board-col')) {
-            event.currentTarget.classList.remove('drag-over');
-        }
-    }
-
-    async function drop(event, newStatus) {
+        if(!isAdmin) return;
         event.preventDefault();
         
-        if (event.currentTarget.classList.contains('board-col')) {
-            event.currentTarget.classList.remove('drag-over');
-        }
+        const container = event.currentTarget.querySelector('.col-content');
+        if(!container) return;
 
-        const gameId = parseInt(event.dataTransfer.getData("gameId"));
-        const gameIndex = games.findIndex(g => g.id === gameId);
+        const afterElement = getDragAfterElement(container, event.clientY);
+        const draggable = document.querySelector('.dragging');
         
-        if (gameIndex !== -1) {
-            const oldStatus = games[gameIndex].status;
-            if (oldStatus !== newStatus.toString()) {
-                games[gameIndex].status = newStatus.toString();
-                renderDashboard();
-                
-                try {
-                    await fetch(`${SUPABASE_URL}?id=eq.${gameId}`, {
-                        method: 'PATCH',
-                        headers,
-                        body: JSON.stringify({ status: newStatus.toString() })
-                    });
-                } catch (error) {
-                    console.error("Erro ao mover:", error);
-                    games[gameIndex].status = oldStatus;
-                    renderDashboard();
-                }
+        if(draggable) {
+            if (afterElement == null) {
+                container.appendChild(draggable);
+            } else {
+                container.insertBefore(draggable, afterElement);
             }
         }
     }
 
-    // --- RENDERIZAR TELA ---
+    // Descobre exatamente em qual posição o mouse está passando
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.game-card:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // 3. Ao soltar o card, salva a nova ordem e coluna no banco
+    async function drop(event, newStatus) {
+        if(!isAdmin) return;
+        event.preventDefault();
+
+        // O DOM já foi reordenado visualmente pela função allowDrop.
+        // Agora precisamos pegar essa nova ordem do HTML e salvar no banco.
+        const container = document.getElementById(`col-${newStatus}-content`);
+        const cardsHTML = container.querySelectorAll('.game-card');
+        
+        let updates = [];
+
+        // Atualiza o array local com a nova ordem e novo status
+        cardsHTML.forEach((card, index) => {
+            const gameId = parseInt(card.getAttribute('data-id'));
+            const gameIndex = games.findIndex(g => g.id === gameId);
+            
+            if (gameIndex !== -1) {
+                const game = games[gameIndex];
+                if (game.status !== newStatus.toString() || game.ordem !== index) {
+                    game.status = newStatus.toString();
+                    game.ordem = index;
+                    updates.push(game);
+                }
+            }
+        });
+
+        renderDashboard(); // Atualiza os contadores de hora
+
+        // Envia as mudanças de posição para o Supabase
+        for (let game of updates) {
+            try {
+                await fetch(`${SUPABASE_URL}?id=eq.${game.id}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ status: game.status, ordem: game.ordem })
+                });
+            } catch (error) {
+                console.error("Erro ao reordenar:", error);
+            }
+        }
+    }
+
+    // ==========================================
+    // RENDERIZAR TELA
+    // ==========================================
+
     function renderDashboard() {
         document.getElementById('col-1-content').innerHTML = '';
         document.getElementById('col-2-content').innerHTML = '';
@@ -439,15 +576,14 @@
         let totalMinutosPlatina = 0;
         let count1 = 0, count2 = 0, count3 = 0, count4 = 0;
 
+        // Como o fetch já traz ordenado do banco, o forEach renderiza na ordem correta
         games.forEach(game => {
-            // Usa as novas funções para transformar o formato HH:MM em minutos para cálculo matemático
             const storyMins = parseTempoParaMinutos(game.storyHours);
             const platMins = parseTempoParaMinutos(game.platHours);
             
             totalMinutosHistoria += storyMins;
             totalMinutosPlatina += platMins;
             
-            // Retorna o tempo formatado para mostrar na tela
             const horasTotaisDoJogo = formataMinutosParaTempo(storyMins + platMins);
             const storyText = formataMinutosParaTempo(storyMins);
             const platText = formataMinutosParaTempo(platMins);
@@ -456,8 +592,18 @@
                 ? `<a href="${game.url}" target="_blank" class="btn-youtube"><i class="fa-brands fa-youtube"></i> Ver Playlist</a>` 
                 : ``;
 
+            // Atributos de drag & drop com data-id para identificar quem é quem
+            const dragAttr = isAdmin ? `draggable="true" ondragstart="dragStart(event, ${game.id})" ondragend="dragEnd(event)"` : '';
+            const cursorStyle = isAdmin ? 'cursor: grab;' : 'cursor: default;';
+            const adminActionsHTML = isAdmin ? `
+                <div class="card-actions">
+                    <button class="btn-action" onclick="openModal(${game.id})"><i class="fa-solid fa-pen"></i> Editar</button>
+                    <button class="btn-action delete" onclick="deleteGame(${game.id})"><i class="fa-solid fa-trash"></i> Excluir</button>
+                </div>
+            ` : '';
+
             const cardHTML = `
-                <div class="game-card" draggable="true" ondragstart="dragStart(event, ${game.id})">
+                <div class="game-card" data-id="${game.id}" ${dragAttr} style="${cursorStyle}">
                     <div class="game-tags">
                         <span class="game-tag">${game.platform || 'N/A'}</span>
                     </div>
@@ -468,10 +614,7 @@
                         <div><i class="fa-solid fa-trophy"></i> <b>Platina:</b> ${platText}h</div>
                     </div>
                     ${ytButtonHTML}
-                    <div class="card-actions">
-                        <button class="btn-action" onclick="openModal(${game.id})"><i class="fa-solid fa-pen"></i> Editar</button>
-                        <button class="btn-action delete" onclick="deleteGame(${game.id})"><i class="fa-solid fa-trash"></i> Excluir</button>
-                    </div>
+                    ${adminActionsHTML}
                 </div>
             `;
 
@@ -483,7 +626,6 @@
 
         const totalJogos = games.length;
 
-        // Atualiza os paineis do topo formatando o total de minutos de volta para HH:MM
         document.getElementById('statTotalHours').innerText = formataMinutosParaTempo(totalMinutosHistoria + totalMinutosPlatina) + "h";
         document.getElementById('statStoryHours').innerText = formataMinutosParaTempo(totalMinutosHistoria) + "h";
         document.getElementById('statPlatHours').innerText = formataMinutosParaTempo(totalMinutosPlatina) + "h";
@@ -497,7 +639,6 @@
         document.getElementById('count-col-4').innerText = count4;
     }
 
-    // INICIA A APLICAÇÃO BUSCANDO OS JOGOS NA NUVEM
     fetchGames();
 
 </script>
