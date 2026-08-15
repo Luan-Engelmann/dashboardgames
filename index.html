@@ -369,7 +369,6 @@
     async function fetchGames() {
         document.getElementById('mainLoader').style.display = 'block';
         try {
-            // Agora busca os jogos respeitando primeiro a ordem manual, e depois o ID para desempatar
             const response = await fetch(`${SUPABASE_URL}?select=*&order=ordem.asc,id.asc`, { headers: getHeaders() });
             if (!response.ok) throw new Error("Erro ao buscar dados");
             
@@ -399,14 +398,12 @@
 
         try {
             if (editingGameId !== null) {
-                // Ao editar, não enviamos a 'ordem' para que ela não seja zerada/alterada
                 await fetch(`${SUPABASE_URL}?id=eq.${editingGameId}`, {
                     method: 'PATCH',
                     headers: getHeaders(),
                     body: JSON.stringify(gameData)
                 });
             } else {
-                // Novos jogos recebem ordem 999 para irem pro final da coluna
                 gameData.ordem = 999;
                 await fetch(SUPABASE_URL, {
                     method: 'POST',
@@ -504,7 +501,6 @@
         }
     }
 
-    // Descobre exatamente em qual posição o mouse está passando
     function getDragAfterElement(container, y) {
         const draggableElements = [...container.querySelectorAll('.game-card:not(.dragging)')];
 
@@ -524,7 +520,6 @@
         if(!isAdmin) return;
         event.preventDefault();
 
-        // O DOM já foi reordenado visualmente pela função allowDrop.
         const container = document.getElementById(`col-${newStatus}-content`);
         if(event.currentTarget.classList.contains('board-col')) {
             event.currentTarget.classList.remove('drag-over');
@@ -533,14 +528,12 @@
         const cardsHTML = container.querySelectorAll('.game-card');
         let updates = [];
 
-        // Atualiza a posição de todo mundo naquela coluna específica
         cardsHTML.forEach((card, index) => {
             const gameId = parseInt(card.getAttribute('data-id'));
             const gameIndex = games.findIndex(g => g.id === gameId);
             
             if (gameIndex !== -1) {
                 const game = games[gameIndex];
-                // Registra quem mudou de coluna ou mudou de ordem (índice)
                 if (game.status !== newStatus.toString() || game.ordem !== index) {
                     game.status = newStatus.toString();
                     game.ordem = index;
@@ -549,13 +542,17 @@
             }
         });
 
-        // Mostra o visual de carregamento porque atualizar vários itens pode demorar 1 segundinho
+        // ==========================================
+        // A CORREÇÃO ESTÁ AQUI ABAIXO:
+        // Ordena a memória local IMEDIATAMENTE para a tela não pular
+        // ==========================================
+        games.sort((a, b) => a.ordem - b.ordem);
+        renderDashboard(); // Fixa os cards no lugar certo na mesma hora
+
         document.getElementById('mainLoader').style.display = 'block';
 
-        // Envia as mudanças de posição para o Supabase
         for (let game of updates) {
             try {
-                // Força o uso da chave pública que tem permissão (já que o RLS está desativado)
                 const fetchHeaders = {
                     'Content-Type': 'application/json',
                     'apikey': SUPABASE_KEY,
@@ -572,10 +569,8 @@
                 console.error("Erro ao reordenar:", error);
             }
         }
-
-        // AGORA SIM: Re-renderizamos o painel só DEPOIS que o banco confirmou a gravação
+        
         document.getElementById('mainLoader').style.display = 'none';
-        renderDashboard(); 
     }
 
     // ==========================================
@@ -592,7 +587,6 @@
         let totalMinutosPlatina = 0;
         let count1 = 0, count2 = 0, count3 = 0, count4 = 0;
 
-        // Como o fetch já traz ordenado do banco, o forEach renderiza na ordem correta
         games.forEach(game => {
             const storyMins = parseTempoParaMinutos(game.storyHours);
             const platMins = parseTempoParaMinutos(game.platHours);
@@ -608,7 +602,6 @@
                 ? `<a href="${game.url}" target="_blank" class="btn-youtube"><i class="fa-brands fa-youtube"></i> Ver Playlist</a>` 
                 : ``;
 
-            // Atributos de drag & drop com data-id para identificar quem é quem
             const dragAttr = isAdmin ? `draggable="true" ondragstart="dragStart(event, ${game.id})" ondragend="dragEnd(event)"` : '';
             const cursorStyle = isAdmin ? 'cursor: grab;' : 'cursor: default;';
             const adminActionsHTML = isAdmin ? `
