@@ -525,19 +525,22 @@
         event.preventDefault();
 
         // O DOM já foi reordenado visualmente pela função allowDrop.
-        // Agora precisamos pegar essa nova ordem do HTML e salvar no banco.
         const container = document.getElementById(`col-${newStatus}-content`);
-        const cardsHTML = container.querySelectorAll('.game-card');
+        if(event.currentTarget.classList.contains('board-col')) {
+            event.currentTarget.classList.remove('drag-over');
+        }
         
+        const cardsHTML = container.querySelectorAll('.game-card');
         let updates = [];
 
-        // Atualiza o array local com a nova ordem e novo status
+        // Atualiza a posição de todo mundo naquela coluna específica
         cardsHTML.forEach((card, index) => {
             const gameId = parseInt(card.getAttribute('data-id'));
             const gameIndex = games.findIndex(g => g.id === gameId);
             
             if (gameIndex !== -1) {
                 const game = games[gameIndex];
+                // Registra quem mudou de coluna ou mudou de ordem (índice)
                 if (game.status !== newStatus.toString() || game.ordem !== index) {
                     game.status = newStatus.toString();
                     game.ordem = index;
@@ -546,20 +549,33 @@
             }
         });
 
-        renderDashboard(); // Atualiza os contadores de hora
+        // Mostra o visual de carregamento porque atualizar vários itens pode demorar 1 segundinho
+        document.getElementById('mainLoader').style.display = 'block';
 
         // Envia as mudanças de posição para o Supabase
         for (let game of updates) {
             try {
+                // Força o uso da chave pública que tem permissão (já que o RLS está desativado)
+                const fetchHeaders = {
+                    'Content-Type': 'application/json',
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`,
+                    'Prefer': 'return=representation' 
+                };
+
                 await fetch(`${SUPABASE_URL}?id=eq.${game.id}`, {
                     method: 'PATCH',
-                    headers: getHeaders(),
+                    headers: fetchHeaders,
                     body: JSON.stringify({ status: game.status, ordem: game.ordem })
                 });
             } catch (error) {
                 console.error("Erro ao reordenar:", error);
             }
         }
+
+        // AGORA SIM: Re-renderizamos o painel só DEPOIS que o banco confirmou a gravação
+        document.getElementById('mainLoader').style.display = 'none';
+        renderDashboard(); 
     }
 
     // ==========================================
